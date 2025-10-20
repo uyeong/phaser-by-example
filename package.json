@@ -1,0 +1,11 @@
+{
+  "name": "phaser-by-example",
+  "packageManager": "yarn@4.10.3",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "runner": "yarn workspace @phaser-by-example/runner"
+  }
+}
