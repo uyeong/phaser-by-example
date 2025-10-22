@@ -1,4 +1,4 @@
-class GameOver extends Phaser.Scene {
+class Opening extends Phaser.Scene {
   // 화면 크기 (런타임에 실제 값으로 설정)
   public width: number = 1_920;
   public height: number = 960;
@@ -6,11 +6,9 @@ class GameOver extends Phaser.Scene {
   // 중심 좌표(런타임에 실제 값으로 설정)
   private centerWidth: number = 1_920 / 2;
   private centerHeight: number = 960 / 2;
-  // 페이드인 연출용 레이어 (create에서 생성해 주입)
-  // private introLayer: Phaser.GameObjects.Layer | null = null;
 
   constructor() {
-    super({ key: 'gameover' });
+    super({ key: 'opening' });
   }
 
   /**
@@ -18,24 +16,15 @@ class GameOver extends Phaser.Scene {
    * 텍스트/입력 설정 및 점수 표시
    */
   create() {
-    // config의 width / height는 string|number일 수 있어 안전하게 변환
     this.width = parseInt(String(this.sys.game.config.width), 10);
     this.height = parseInt(String(this.sys.game.config.height), 10);
     this.centerWidth = this.width / 2;
     this.centerHeight = this.height / 2;
     // 배경색 설정
     this.cameras.main.setBackgroundColor('rgba(135, 206, 235, 0.85)');
-    // 점수 표시(registry는 any 반환이므로 문자열로 변환)
-    this.add
-      .bitmapText(this.centerWidth, 160, 'arcade', String(this.registry.get('score') ?? '0'), 80)
-      .setOrigin(0.5);
     // 타이틀 문구
     this.add
-      .bitmapText(this.centerWidth, this.centerHeight, 'arcade', 'GAME OVER', 144)
-      .setOrigin(0.5);
-    // 가이드 문구
-    this.add
-      .bitmapText(this.centerWidth, 800, 'arcade', 'Press ENTER or Click to restart!', 48)
+      .bitmapText(this.centerWidth, this.centerHeight, 'arcade', 'Press ENTER or Click to start!', 70)
       .setOrigin(0.5);
     // 입력: 엔터 / 클릭 -> 게임 장면 재시작
     this.input.keyboard?.on('keydown-ENTER', this.startGame, this);
@@ -46,8 +35,9 @@ class GameOver extends Phaser.Scene {
    * 게임 장면으로 전환하는 메서드
    */
   private startGame() {
+    this.registry.set('started', true);
     this.scene.start('game');
   }
 }
 
-export default GameOver;
+export default Opening;

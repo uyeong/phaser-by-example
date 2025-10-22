@@ -1,15 +1,21 @@
+import { checkOverlapRect } from '../utils';
+
 import type GameScene from '../scenes/game';
 
 class Generator {
   // GameScene(Phaser Scene)의 인스턴스
   private readonly scene: GameScene;
-  // 생성된 핀(장애물) 수를 추적
-  // private pinos: number = 0;
+  // 설정 가능한 가장 높은 위치(가장 낮은 값)
+  private readonly maxY: number;
+  // 설정 가능한 가장 낮은 위치(가장 큰 값)
+  private readonly minY: number;
 
   constructor(scene: GameScene) {
     this.scene = scene;
+    this.maxY = this.scene.height - 550;
+    this.minY = this.scene.height - (51 + 41);
     // 2초 후 init() 메서드를 한 번 실행
-    this.scene.time.delayedCall(2000, () => this.init(), undefined, this);
+    this.scene.time.delayedCall(2_000, () => this.init(), undefined, this);
   }
 
   /**
@@ -29,12 +35,11 @@ class Generator {
    * 이렇게 해서 구름이 계속 랜덤하게 생성됨.
    */
   private generateCloud() {
-    new Cloud(this.scene);
+    const scale = Phaser.Utils.Array.GetRandom(Cloud.SCALES);
+    new Cloud(this.scene, undefined, undefined, scale);
     this.scene.time.delayedCall(
-      Phaser.Math.Between(2000, 3000),
+      Phaser.Math.Between(1_000, 2_000),
       () => this.generateCloud(),
-      undefined,
-      this
     );
   }
 
@@ -44,15 +49,23 @@ class Generator {
    * 이후 랜덤한 간격으로 자기 자신을 다시 호출함.
    */
   private generateObstacle() {
-    this.scene.obstacles?.add(
-      new Obstacle(
-        this.scene,
-        800,
-        parseInt(String(this.scene.height), 10) - Phaser.Math.Between(32, 128)
-      )
-    );
+    const obstacleY = Phaser.Math.Between(this.minY, this.maxY);
+    const obstacle =  new Obstacle(this.scene, 2_000, obstacleY);
+    const coins = (this.scene.coins?.getChildren() ?? []) as Coin[];
+    coins.forEach((coin)=>{
+      if (checkOverlapRect(coin, obstacle)) {
+        let direction = Phaser.Math.RND.sign();
+        obstacle.y = (coin.y) + 102 * direction;
+        if (obstacle.y <= this.maxY || obstacle.y >= this.minY) {
+          // 경계 바깥으로 나갔다면 반대 방향으로 보정
+          direction = direction * -1;
+          obstacle.y = (coin.y) + 102 * direction;
+        }
+      }
+    });
+    this.scene.obstacles?.add(obstacle);
     this.scene.time.delayedCall(
-      Phaser.Math.Between(1500, 2500),
+      Phaser.Math.Between(500, 1_500),
       () => this.generateObstacle(),
       undefined,
       this
@@ -65,15 +78,23 @@ class Generator {
    * 랜덤한 시간 후 자신을 다시 호출해 코인을 계속 만들어냄.
    */
   private generateCoin() {
-    this.scene.coins?.add(
-      new Coin(
-        this.scene,
-        800,
-        parseInt(String(this.scene.height), 10) - Phaser.Math.Between(32, 128)
-      )
-    );
+    const coinY = Phaser.Math.Between(this.minY, this.maxY);
+    const coin = new Coin(this.scene, 2_000, coinY);
+    const obstacles = (this.scene.obstacles?.getChildren() ?? []) as Obstacle[];
+    obstacles.forEach((obstacle)=>{
+      if (checkOverlapRect(obstacle, coin)) {
+        let direction = Phaser.Math.RND.sign();
+        coin.y = (obstacle.y) + 102 * direction;
+        if (coin.y <= this.maxY || coin.y >= this.minY) {
+          // 경계 바깥으로 나갔다면 반대 방향으로 보정
+          direction = direction * -1;
+          coin.y = (obstacle.y) + 102 * direction;
+        }
+      }
+    })
+    this.scene.coins?.add(coin);
     this.scene.time.delayedCall(
-      Phaser.Math.Between(500, 1500),
+      Phaser.Math.Between(2_000, 5_000),
       () => this.generateCoin(),
       undefined,
       this
@@ -84,28 +105,25 @@ class Generator {
 /**
  * Cloud: 단순한 사각형 구름 객체
  * - 무작위 y 위치 / 스케일
- * - 오른쪽(800) -> 왼쪽(-100)으로 트윈 이동 후 제거
+ * - 오른쪽(2,000) -> 왼쪽(-100)으로 트윈 이동 후 제거
  */
-class Cloud extends Phaser.GameObjects.Rectangle  {
-  // 구름의 기본 폭
-  private static readonly WIDTH = 98;
-  // 구름의 기본 높이
-  private static readonly HEIGHT = 32;
-  // 구름의 기본 색성
-  private static readonly COLOR = 0xffffff;
+class Cloud extends Phaser.GameObjects.Image  {
+  // 구름의 기본 스케일 모음
+  public static readonly SCALES = [0.7, 1, 1.3];
 
   constructor(
     scene: Phaser.Scene,
     // 기본: 화면 오른쪽 밖에서 시작
-    x: number = 800,
+    x: number = 2_000,
     // 기본: 상단 0 ~ 100 사이 무작위
-    y: number = Phaser.Math.Between(0, 100)
+    y: number = Phaser.Math.Between(68, 160),
+    // 1, 1/2, 1/3 중 하나로 스케일 (작을수록 더 멀리 보이는 느낌)
+    scale: number = Phaser.Utils.Array.GetRandom(Cloud.SCALES)
   ) {
-    super(scene, x, y, Cloud.WIDTH, Cloud.HEIGHT, Cloud.COLOR);
+    const cloudIndex = Phaser.Math.Between(1, 4);
+    super(scene, x, y, `cloud${cloudIndex}`);
     // 이 오브젝트를 Scene에 등록
     scene.add.existing(this);
-    // 1, 1/2, 1/3 중 하나로 스케일 (작을수록 더 멀리 보이는 느낌)
-    const scale = 1 / Phaser.Math.Between(1, 3);
     this.setScale(scale);
     this.init();
   }
@@ -116,9 +134,9 @@ class Cloud extends Phaser.GameObjects.Rectangle  {
   private init() {
     this.scene.tweens.add({
       targets: this,
-      x: { from: 800, to: -100 },
+      x: { from: 2_000, to: -100 },
       // duration을 스케일에 반비례하게 주면: 작은(먼) 그름일수록 더 천천히 흐름
-      duration: 2000 / this.scale,
+      duration: 3_000 / this.scale,
       onComplete: () => {
         this.destroy();
       }
@@ -136,7 +154,7 @@ class Obstacle extends Phaser.GameObjects.Rectangle {
   // Arcade 물리 바디 (Scene에서 physics.add.existing 후 할당됨)
   public body: Phaser.Physics.Arcade.Body | null = null;
   // 장애물의 크기
-  private static readonly SIZE = 32;
+  private static readonly SIZE = 102;
   // 작애물의 색상
   private static readonly COLOR = 0xff0000;
 
@@ -148,6 +166,8 @@ class Obstacle extends Phaser.GameObjects.Rectangle {
     scene.physics.add.existing(this);
     // 트윈으로만 움직일 것이므로 중력은 끔
     this.body?.setAllowGravity(false);
+    // 장애물은 움직이지 않음
+    this.body?.setImmovable(true);
     // const alpha = 1 / Phaser.Math.Between(1, 3);
     this.init();
   }
@@ -158,8 +178,8 @@ class Obstacle extends Phaser.GameObjects.Rectangle {
   private init() {
     this.scene.tweens.add({
       targets: this,
-      x: { from: 820, to: -100},
-      duration: 2000,
+      x: { from: 2_000, to: -100},
+      duration: 2_000,
       onComplete: () => {
         this.destroy();
       }
@@ -186,6 +206,7 @@ class Coin extends Phaser.GameObjects.Sprite {
     scene.physics.add.existing(this);
     // 코인은 중력 영향 없음
     this.body?.setAllowGravity(false);
+    this.setScale(3.2);
     // const alpha = 1 / Phaser.Math.Between(1, 100);
     this.init();
   }
@@ -197,17 +218,16 @@ class Coin extends Phaser.GameObjects.Sprite {
     // 트윈 설정: 현재 x(또는 우측 바깥) -> 왼쪽 바깥(-100)
     this.scene.tweens.add({
       targets: this,
-      x: { from: 820, to: - 100 },
-      duration: 2000,
+      x: { from: 2000, to: -100 },
+      duration: 2_000,
       onComplete: () => {
         this.destroy();
       }
     });
     // 스프라이트 애니메이션 생성
-    // const coinAnimation = this.scene.anims.create({
-    this.scene.anims.create({
+    this.anims.create({
       key: Coin.ANIM_KEY,
-      frames: this.scene.anims.generateFrameNumbers(Coin.ANIM_KEY, {
+      frames: this.anims.generateFrameNumbers(Coin.ANIM_KEY, {
         start: 0,
         end: 7
       }),

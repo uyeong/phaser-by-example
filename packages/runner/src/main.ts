@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
 import Game from './scenes/game';
+import Opening from './scenes/opening.ts';
 import GameOver from './scenes/gameover';
 
 import type { Types as PhaserTypes } from 'phaser';
 
 const config: PhaserTypes.Core.GameConfig = {
   // 게임의 가로 크기(픽셀 단위)
-  width: 600,
+  width: 1_920,
   // 게임의 세로 크기(픽셀 단위)
-  height: 300,
+  height: 960,
   // 화면의 크기 및 배율 관련 설정
   scale: {
     /**
@@ -40,13 +41,13 @@ const config: PhaserTypes.Core.GameConfig = {
     default: 'arcade',
     // arcade 물리 엔진 전용 설정
     arcade: {
-      // 중력 설정(y축으로 350 힘이 아래로 작용)
+      // 중력 설정(y축으로 4,800 힘이 아래로 작용)
       gravity: {
         x: 0,
-        y: 350
+        y: 4_800
       },
       // 디버그 모드 활성화(true로 하면 충돌 박스, 물리선 등이 보임)
-      debug: true
+      debug: false
     }
   },
   /**
@@ -54,7 +55,7 @@ const config: PhaserTypes.Core.GameConfig = {
    * - 각 Scene은 Phaser.Scene 클래스를 상속받은 클래스여야 함
    * - 장면은 순서대로 실행됨 (첫 번째 Scene이 초기 진입 Scene)
    */
-  scene: [Game, GameOver]
+  scene: [Game, Opening, GameOver]
 };
 
 // const game = new Phaser.Game(config);
